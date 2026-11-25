@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-editor.local/schemas/transcript.schema.json",
+  "title": "Transcript",
+  "description": "Output of Phase 1. Word-level timestamps in ticks. Ticks are strings to avoid float precision loss across languages.",
+  "type": "object",
+  "required": ["version", "jobId", "sourceIndex", "language", "words", "segments"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "jobId": { "type": "string" },
+    "sourceIndex": { "type": "integer", "minimum": 0 },
+    "language": { "type": "string", "description": "BCP-47-ish, e.g. 'id', 'en', 'mixed'." },
+    "languageProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+    "model": { "type": "string", "description": "e.g. whisper-small-int8" },
+    "words": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/word" }
+    },
+    "segments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/segment" }
+    }
+  },
+  "$defs": {
+    "word": {
+      "type": "object",
+      "required": ["text", "startTicks", "endTicks"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "endTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "speaker": { "type": ["integer", "null"], "minimum": 0 },
+        "isFiller": { "type": "boolean", "default": false },
+        "segmentIndex": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "required": ["index", "startTicks", "endTicks", "text", "wordStart", "wordEnd"],
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "endTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "text": { "type": "string" },
+        "wordStart": { "type": "integer", "minimum": 0, "description": "Inclusive index into words[]" },
+        "wordEnd": { "type": "integer", "minimum": 0, "description": "Exclusive index into words[]" },
+        "avgLogprob": { "type": "number" },
+        "noSpeechProb": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

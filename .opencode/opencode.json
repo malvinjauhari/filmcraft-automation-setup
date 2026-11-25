@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "mcp": {
+    "servers": {
+      "filmcraft": {
+        "type": "local",
+        "command": [
+          "/usr/bin/filmcraft-cli",
+          "mcp",
+          "--data-dir",
+          "workspace/.filmcraft-data"
+        ],
+        "cwd": ".",
+        "timeout": {
+          "startup": 60000,
+          "catalog": 60000,
+          "execution": 1800000
+        }
+      }
+    }
+  },
+  "agents": {
+    "video-editor": {
+      "description": "Orchestrates the full AI video editing pipeline: ingest, analyse, plan, build in FilmCraft, QC, export.",
+      "mode": "primary"
+    },
+    "media-analyst": {
+      "description": "Transcribes, detects speech/silence/scenes, and produces cut candidates. Read-only on footage.",
+      "mode": "subagent"
+    },
+    "timeline-builder": {
+      "description": "Turns a validated editing plan into FilmCraft commands and verifies each step by reading state back.",
+      "mode": "subagent"
+    }
+  }
+}

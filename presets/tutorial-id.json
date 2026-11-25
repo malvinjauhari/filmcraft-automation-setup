@@ -1,0 +1,77 @@
+{
+  "name": "tutorial-id",
+  "version": "1.0",
+  "description": "Indonesian technical tutorial: tight pacing, generous silence trimming, burned-in subtitles.",
+  "language": "id",
+
+  "silence": {
+    "minSilenceSeconds": 0.5,
+    "keepBreathSeconds": 0.2,
+    "protectTakeEdgesSeconds": 0.3,
+    "comment": "Cut pauses over half a second but leave a 200ms breath so cuts do not feel clipped."
+  },
+
+  "fillers": {
+    "remove": true,
+    "lexiconId": [
+      "eee", "eh", "e", "emm", "em", "hmm", "hm", "mm",
+      "anu", "apa", "gitu", "gituh", "kayak", "kayaknya", "gimana"
+    ],
+    "lexiconEn": ["um", "uh", "erm", "er"],
+    "protect": [
+      "ya", "kan", "nah", "jadi", "terus"
+    ],
+    "comment": "The protected words are discourse markers that carry meaning in Indonesian; cutting them changes the sentence. 'like' and 'you know' are excluded from the English lexicon because they are ordinary words in a bilingual tech talk."
+  },
+
+  "pacing": {
+    "maxRemovalRatioPerWindow": 0.35,
+    "windowSeconds": 30,
+    "minCutSeconds": 0.18,
+    "comment": "Removing more than a third of any 30s window means the detector is wrong, not the speaker."
+  },
+
+  "subtitles": {
+    "enabled": true,
+    "language": "id",
+    "burnIn": true,
+    "sidecar": "srt",
+    "maxCharsPerLine": 42,
+    "maxLines": 2,
+    "minCueSeconds": 1.0,
+    "maxCueSeconds": 6.0,
+    "style": {
+      "font": "Inter",
+      "size": 44,
+      "color": "#ffffff",
+      "outline": 2,
+      "outlineColor": "#000000",
+      "align": "center",
+      "anchor": "bottom",
+      "margin": 0.06
+    }
+  },
+
+  "audio": {
+    "targetLufs": -14,
+    "truePeakDb": -1.5,
+    "normalisePerClip": true,
+    "comment": "YouTube's normalisation target. Per-clip gain matching stops takes from drifting."
+  },
+
+  "chapters": {
+    "enabled": true,
+    "minChapterSeconds": 45,
+    "fromSceneCuts": true
+  },
+
+  "export": {
+    "format": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "sampleRate": 48000,
+    "presetQuery": { "format": "h264", "width": 1920, "height": 1080 },
+    "comment": "presetQuery is resolved against export.presets.list at run time. Never hardcode a preset name."
+  }
+}

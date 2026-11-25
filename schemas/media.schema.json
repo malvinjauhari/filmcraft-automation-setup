@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-editor.local/schemas/media.schema.json",
+  "title": "MediaManifest",
+  "description": "Output of Phase 0 (ingest). One entry per source file, plus a stable index that later phases reference by id.",
+  "type": "object",
+  "required": ["version", "jobId", "generatedAt", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "jobId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "ticksPerSecond": { "type": "integer", "const": 254016000000 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": [
+        "index", "path", "sha256", "bytes", "kind",
+        "durationTicks", "durationSeconds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Stable 0-based index. Referenced by analysis and plan as sourceIndex."
+        },
+        "path": {
+          "type": "string",
+          "description": "Absolute path to the original. Never written to."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Hash at ingest. Re-checked before export."
+        },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "kind": { "type": "string", "enum": ["video", "audio", "image"] },
+        "durationTicks": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Integer ticks as a string. Never a JSON number: 10 hours of ticks exceeds 2^53 and would be silently rounded."
+        },
+        "durationSeconds": { "type": "number", "minimum": 0 },
+        "video": { "$ref": "#/$defs/videoStream" },
+        "audio": { "$ref": "#/$defs/audioStream" },
+        "filmcraftItem": {
+          "type": ["integer", "null"],
+          "description": "FilmCraft project item id after import. Null until Phase 5."
+        }
+      }
+    },
+    "videoStream": {
+      "type": "object",
+      "required": ["codec", "width", "height", "fps"],
+      "additionalProperties": false,
+      "properties": {
+        "codec": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "fpsRational": {
+          "type": "object",
+          "required": ["num", "den"],
+          "additionalProperties": false,
+          "properties": {
+            "num": { "type": "integer", "minimum": 1 },
+            "den": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "bitrate": { "type": "integer", "minimum": 0 },
+        "pixelFormat": { "type": "string" },
+        "colorPrimaries": { "type": "string" },
+        "colorTransfer": { "type": "string" },
+        "colorMatrix": { "type": "string" },
+        "rotation": { "type": "number" }
+      }
+    },
+    "audioStream": {
+      "type": "object",
+      "required": ["codec", "sampleRate", "channels"],
+      "additionalProperties": false,
+      "properties": {
+        "codec": { "type": "string" },
+        "sampleRate": { "type": "integer", "minimum": 1 },
+        "channels": { "type": "integer", "minimum": 1 },
+        "bitrate": { "type": "integer", "minimum": 0 },
+        "layout": { "type": "string" }
+      }
+    }
+  }
+}

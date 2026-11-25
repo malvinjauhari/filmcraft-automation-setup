@@ -1,0 +1,23 @@
+{
+  "name": "English filler lexicon",
+  "version": "1.0",
+  "description": "Filler words and verbal tics for English-language footage. Same matching rules as the Indonesian lexicon.",
+  "language": "en",
+  "single": [
+    "um", "umm", "uh", "uhh", "erm", "er", "ah", "eh",
+    "like", "so", "right", "okay", "ok", "well", "actually", "basically",
+    "literally", "honestly", "anyway"
+  ],
+  "multiword": [
+    "you know", "i mean", "sort of", "kind of", "so yeah",
+    "you know what i mean", "and stuff", "or whatever"
+  ],
+  "doNotCut": [
+    "not", "no", "never", "don't", "can't", "won't", "but",
+    "because", "if", "must", "should"
+  ],
+  "notes": [
+    "'like', 'so', 'right', 'actually' are only fillers in isolation. Never cut them when they carry grammatical meaning ('so that', 'like this').",
+    "The doNotCut list protects negations, which reverse meaning if removed."
+  ]
+}

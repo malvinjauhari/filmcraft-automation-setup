@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-editor.local/schemas/analysis.schema.json",
+  "title": "MediaAnalysis",
+  "description": "Output of Phase 2. Deterministic, model-free observations: speech spans, silence, filler hits, scene cuts. The LLM consumes this to write a plan; it never replaces it. A single-source job is one document; a multi-source job is {version, jobId, sources: [...]}, where each entry has the shape of $defs/sourceAnalysis.",
+  "oneOf": [
+    { "$ref": "#/$defs/sourceAnalysis" },
+    { "$ref": "#/$defs/multiSource" }
+  ],
+  "$defs": {
+    "multiSource": {
+      "type": "object",
+      "required": ["version", "jobId", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "const": "1.0" },
+        "jobId": { "type": "string" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceAnalysis" }
+        }
+      }
+    },
+    "sourceAnalysis": {
+      "type": "object",
+      "required": ["version", "jobId", "sourceIndex", "speech", "silences", "fillers", "scenes", "candidates"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "const": "1.0" },
+        "jobId": { "type": "string" },
+        "sourceIndex": { "type": "integer", "minimum": 0 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "speech": {
+          "type": "array",
+          "description": "Merged voice-activity spans.",
+          "items": { "$ref": "#/$defs/span" }
+        },
+        "silences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/silence" }
+        },
+        "fillers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/filler" }
+        },
+        "scenes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scene" }
+        },
+        "candidates": {
+          "type": "array",
+          "description": "Rule-based cut suggestions. The plan may accept, reject or resize these; it may not invent cuts outside them without reason.",
+          "items": { "$ref": "#/$defs/candidate" }
+        },
+        "stats": { "$ref": "#/$defs/stats" }
+      }
+    },
+    "ticks": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "Integer ticks as a string. Never a JSON number: ticks for a 1-hour video already exceed 2^53."
+    },
+    "seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Human-readable mirror of the tick fields. Convenience only; ticks are authoritative."
+    },
+    "span": {
+      "type": "object",
+      "required": ["startTicks", "endTicks"],
+      "additionalProperties": false,
+      "properties": {
+        "startTicks": { "$ref": "#/$defs/ticks" },
+        "endTicks": { "$ref": "#/$defs/ticks" },
+        "startSeconds": { "$ref": "#/$defs/seconds" },
+        "endSeconds": { "$ref": "#/$defs/seconds" }
+      }
+    },
+    "silence": {
+      "type": "object",
+      "required": ["startTicks", "endTicks", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "startTicks": { "$ref": "#/$defs/ticks" },
+        "endTicks": { "$ref": "#/$defs/ticks" },
+        "startSeconds": { "$ref": "#/$defs/seconds" },
+        "endSeconds": { "$ref": "#/$defs/seconds" },
+        "kind": {
+          "type": "string",
+          "enum": ["leading", "internal", "trailing", "pause"]
+        },
+        "nearSceneCut": { "type": "boolean", "default": false }
+      }
+    },
+    "filler": {
+      "type": "object",
+      "required": ["text", "startTicks", "endTicks"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "startTicks": { "$ref": "#/$defs/ticks" },
+        "endTicks": { "$ref": "#/$defs/ticks" },
+        "wordIndex": { "type": "integer", "minimum": 0 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "scene": {
+      "type": "object",
+      "required": ["index", "startTicks", "endTicks"],
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "startTicks": { "$ref": "#/$defs/ticks" },
+        "endTicks": { "$ref": "#/$defs/ticks" },
+        "startSeconds": { "$ref": "#/$defs/seconds" },
+        "endSeconds": { "$ref": "#/$defs/seconds" },
+        "score": { "type": "number" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["id", "startTicks", "endTicks", "kind", "reason", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "startTicks": { "$ref": "#/$defs/ticks" },
+        "endTicks": { "$ref": "#/$defs/ticks" },
+        "kind": {
+          "type": "string",
+          "enum": ["silence", "filler", "retake", "mistake", "dead_air"]
+        },
+        "reason": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Free-form supporting data (word indices, measured dB, etc.)."
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "speechTicks": { "$ref": "#/$defs/ticks" },
+        "silenceTicks": { "$ref": "#/$defs/ticks" },
+        "candidateCount": { "type": "integer", "minimum": 0 },
+        "candidateTicks": { "$ref": "#/$defs/ticks" }
+      }
+    }
+  }
+}

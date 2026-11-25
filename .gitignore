@@ -1,0 +1,28 @@
+# Python virtual environment & build artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Runtime workspace data (keep directory structure via .gitkeep)
+workspace/inbox/*
+!workspace/inbox/.gitkeep
+workspace/projects/*
+!workspace/projects/.gitkeep
+workspace/models/*
+!workspace/models/.gitkeep
+workspace/logs/*
+!workspace/logs/.gitkeep
+workspace/.filmcraft-data/
+
+# Raw footage
+raw-video/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+
+# OS / editor
+.DS_Store
+*.log

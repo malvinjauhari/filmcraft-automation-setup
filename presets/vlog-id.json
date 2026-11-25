@@ -1,0 +1,58 @@
+{
+  "name": "vlog-id",
+  "version": "1.0",
+  "description": "Indonesian talking-head vlog: looser pacing, keeps more natural pauses, no burn-in by default.",
+  "language": "id",
+
+  "silence": {
+    "minSilenceSeconds": 0.8,
+    "keepBreathSeconds": 0.35,
+    "protectTakeEdgesSeconds": 0.5
+  },
+
+  "fillers": {
+    "remove": true,
+    "lexiconId": ["eee", "emm", "hmm", "anu"],
+    "lexiconEn": ["um", "uh"],
+    "protect": ["ya", "kan", "nah", "gitu", "kayak", "jadi"],
+    "comment": "A vlog sounds wrong without its natural filler rhythm. Only the truly empty ones go."
+  },
+
+  "pacing": {
+    "maxRemovalRatioPerWindow": 0.2,
+    "windowSeconds": 30,
+    "minCutSeconds": 0.25
+  },
+
+  "subtitles": {
+    "enabled": true,
+    "language": "id",
+    "burnIn": false,
+    "sidecar": "srt",
+    "maxCharsPerLine": 42,
+    "maxLines": 2,
+    "minCueSeconds": 1.2,
+    "maxCueSeconds": 7.0
+  },
+
+  "audio": {
+    "targetLufs": -16,
+    "truePeakDb": -2.0,
+    "normalisePerClip": true
+  },
+
+  "chapters": {
+    "enabled": false,
+    "minChapterSeconds": 120,
+    "fromSceneCuts": true
+  },
+
+  "export": {
+    "format": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "sampleRate": 48000,
+    "presetQuery": { "format": "h264", "width": 1920, "height": 1080 }
+  }
+}

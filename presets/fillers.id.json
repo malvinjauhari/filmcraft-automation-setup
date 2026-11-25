@@ -1,0 +1,26 @@
+{
+  "$schema": "../schemas/analysis.schema.json",
+  "name": "Indonesian filler lexicon",
+  "version": "1.0",
+  "description": "Words that carry no meaning and can be cut when they stand alone. Matching is case-insensitive on the trimmed, punctuation-stripped token. Multi-word entries are matched on the joined token sequence.",
+  "language": "id",
+  "single": [
+    "eee", "ee", "eh", "e", "emm", "em", "ehm", "hmm", "hm", "mm", "mmm",
+    "ah", "oh", "uh", "anu", "apa", "gitu", "gituh", "begitu",
+    "kayak", "kayaknya", "kaya", "gimana", "gitu ya", "ya kan",
+    "nah", "kan", "ya", "sih", "deh", "dong", "kok", "loh", "lah",
+    "oke", "okeh", "hmm oke"
+  ],
+  "multiword": [
+    "ya kan", "gitu ya", "apa ya", "gimana ya", "kayak gitu",
+    "eee gimana", "hmm oke", "apa namanya", "gitu deh"
+  ],
+  "doNotCut": [
+    "tidak", "bukan", "belum", "jangan", "harus", "bisa", "tapi",
+    "karena", "kalau", "supaya", "jadi"
+  ],
+  "notes": [
+    "'apa', 'ya', 'kan', 'nah' are context-dependent. They are only cut when they appear as an isolated token between pauses, never when adjacent to content words.",
+    "The doNotCut list guards against removing a negation or conjunction, which reverses meaning."
+  ]
+}

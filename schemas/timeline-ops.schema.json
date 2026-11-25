@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-editor.local/schemas/timeline-ops.schema.json",
+  "title": "TimelineOperations",
+  "description": "The deterministic intermediate representation between a validated editing plan and FilmCraft commands. Produced by compile.ts, consumed only by the FilmCraft client. Every op is idempotent when replayed into a fresh sequence.",
+  "type": "object",
+  "required": ["version", "jobId", "sequence", "ops"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "jobId": { "type": "string" },
+    "sequence": {
+      "type": "object",
+      "required": ["name", "width", "height", "fps", "sampleRate"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "width": { "type": "integer", "const": 1920 },
+        "height": { "type": "integer", "const": 1080 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "sampleRate": { "type": "integer", "const": 48000 }
+      }
+    },
+    "ops": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/op" }
+    },
+    "expectedDurationTicks": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "Sum of kept ranges, snapped to the frame grid. Asserted after build."
+    }
+  },
+  "$defs": {
+    "op": {
+      "oneOf": [
+        { "$ref": "#/$defs/newProject" },
+        { "$ref": "#/$defs/newSequence" },
+        { "$ref": "#/$defs/importMedia" },
+        { "$ref": "#/$defs/place" },
+        { "$ref": "#/$defs/captionTrack" },
+        { "$ref": "#/$defs/caption" },
+        { "$ref": "#/$defs/gain" },
+        { "$ref": "#/$defs/marker" },
+        { "$ref": "#/$defs/save" },
+        { "$ref": "#/$defs/export" }
+      ]
+    },
+    "newProject": {
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "newProject" },
+        "name": { "type": "string" }
+      }
+    },
+    "newSequence": {
+      "type": "object",
+      "required": ["op", "name", "width", "height", "fps"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "newSequence" },
+        "name": { "type": "string" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "fps": { "type": "number" }
+      }
+    },
+    "importMedia": {
+      "type": "object",
+      "required": ["op", "paths", "sourceIndices"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "importMedia" },
+        "paths": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "sourceIndices": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Parallel to paths. Maps returned FilmCraft item ids back to media.json sourceIndex."
+        }
+      }
+    },
+    "place": {
+      "type": "object",
+      "required": ["op", "sourceIndex", "track", "startTicks", "sourceInTicks", "durationTicks"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "place" },
+        "sourceIndex": { "type": "integer", "minimum": 0 },
+        "track": { "type": "string", "pattern": "^(V|A)[0-9]+$" },
+        "audioTrack": { "type": "string", "pattern": "^(V|A)[0-9]+$" },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$", "description": "Output position on the timeline." },
+        "sourceInTicks": { "type": "string", "pattern": "^[0-9]+$", "description": "Offset into the source media." },
+        "durationTicks": { "type": "string", "pattern": "^[0-9]+$" }
+      }
+    },
+    "captionTrack": {
+      "type": "object",
+      "required": ["op", "format", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "captionTrack" },
+        "format": { "type": "string", "enum": ["Subtitle"] },
+        "name": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "caption": {
+      "type": "object",
+      "required": ["op", "startTicks", "durationTicks", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "caption" },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "durationTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "gain": {
+      "type": "object",
+      "required": ["op", "sourceIndex", "db"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "gain" },
+        "sourceIndex": { "type": "integer", "minimum": 0 },
+        "db": { "type": "number", "minimum": -24, "maximum": 24 }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "required": ["op", "startTicks", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "marker" },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "name": { "type": "string" }
+      }
+    },
+    "save": {
+      "type": "object",
+      "required": ["op", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "save" },
+        "path": { "type": "string" }
+      }
+    },
+    "export": {
+      "type": "object",
+      "required": ["op", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "export" },
+        "path": { "type": "string" },
+        "preset": { "type": "string" },
+        "burnCaptions": { "type": "boolean" },
+        "captionSidecar": { "type": "string", "enum": ["srt", "vtt"] }
+      }
+    }
+  }
+}

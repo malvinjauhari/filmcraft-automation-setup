@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-editor.local/schemas/editing-plan.schema.json",
+  "title": "EditingPlan",
+  "description": "The ONLY thing the LLM is allowed to return. Validated three ways (schema, reality, sanity) before a single FilmCraft command is emitted.",
+  "type": "object",
+  "required": ["version", "jobId", "sequence", "cuts", "subtitles"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "jobId": { "type": "string" },
+    "sequence": { "$ref": "#/$defs/sequence" },
+    "cuts": {
+      "type": "array",
+      "description": "Ranges to REMOVE from the source. Kept ranges are the complement. Sorted by startTicks after normalisation.",
+      "items": { "$ref": "#/$defs/cut" }
+    },
+    "subtitles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/subtitle" }
+    },
+    "audio": { "$ref": "#/$defs/audio" },
+    "chapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/chapter" }
+    },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "$defs": {
+    "sequence": {
+      "type": "object",
+      "required": ["width", "height", "fps", "sampleRate"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "integer", "const": 1920 },
+        "height": { "type": "integer", "const": 1080 },
+        "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 120 },
+        "sampleRate": { "type": "integer", "const": 48000 }
+      }
+    },
+    "cut": {
+      "type": "object",
+      "required": ["id", "sourceIndex", "startTicks", "endTicks", "kind", "reason", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^c[0-9]+$" },
+        "sourceIndex": { "type": "integer", "minimum": 0 },
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "endTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "kind": {
+          "type": "string",
+          "enum": ["silence", "filler", "retake", "mistake", "dead_air"]
+        },
+        "reason": { "type": "string", "minLength": 8 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "candidateId": {
+          "type": "string",
+          "description": "Links back to analysis.candidates[].id when the cut came from a rule."
+        }
+      }
+    },
+    "subtitle": {
+      "type": "object",
+      "required": ["startTicks", "endTicks", "text", "language"],
+      "additionalProperties": false,
+      "properties": {
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "endTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "language": { "type": "string", "pattern": "^(id|en|mixed)$" }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targetLufs": { "type": "number", "minimum": -30, "maximum": -5, "default": -14 },
+        "clipGains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sourceIndex", "db"],
+            "additionalProperties": false,
+            "properties": {
+              "sourceIndex": { "type": "integer", "minimum": 0 },
+              "db": { "type": "number", "minimum": -24, "maximum": 24 }
+            }
+          }
+        },
+        "burnCaptions": { "type": "boolean", "default": true }
+      }
+    },
+    "chapter": {
+      "type": "object",
+      "required": ["startTicks", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "startTicks": { "type": "string", "pattern": "^[0-9]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generatedBy": { "type": "string" },
+        "promptVersion": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

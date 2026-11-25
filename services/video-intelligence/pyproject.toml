@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vidintel"
+version = "0.1.0"
+description = "Video Intelligence — transcription, VAD, scene and silence analysis for the AI video editor"
+requires-python = ">=3.10"
+dependencies = [
+  "faster-whisper>=1.0",
+  "scenedetect>=0.6.4",
+  "pydantic>=2.5",
+  "numpy>=1.24",
+  "jsonschema>=4.0",
+]
+
+[project.scripts]
+vidintel = "vidintel.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["vidintel*"]

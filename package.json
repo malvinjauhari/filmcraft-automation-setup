@@ -1,0 +1,16 @@
+{
+  "name": "ai-video-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first AI video editing agent: analyse footage, plan cuts, build a FilmCraft timeline, export a finished 1080p video.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "setup": "bash setup.sh",
+    "verify": "node scripts/verify-env.mjs",
+    "smoke": "node scripts/smoke-test.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "edit": "node apps/cli/src/main.mjs"
+  },
+  "dependencies": {}
+}
