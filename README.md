@@ -9,8 +9,10 @@ Folder ini adalah **paket siap pakai (self-contained)** untuk menjalankan **AI V
 Pastikan binary berikut sudah terinstall di mesin target (detail lengkap ada di [REQUIREMENTS.md](./REQUIREMENTS.md)):
 - `filmcraft` & `filmcraft-cli` (`0.17.1` di `/usr/bin/`)
 - `ffmpeg` & `ffprobe`
-- `node` (`>= 18`)
+- `node` (`>= 18`) & `npm`
 - `python3` & `python3-venv` (`>= 3.10`)
+- `openssl` (untuk generate `FILMCRAFT_CONTROL_TOKEN`)
+- `opencode` *(opsional — hanya jika menjalankan orkestrasi agen via OpenCode CLI)*
 
 ---
 
@@ -29,12 +31,13 @@ Atau sekalian pre-download model Whisper `base` (~145 MB) agar siap offline:
 ```
 
 Script `setup.sh` akan otomatis:
-1. Mengecek semua system binaries (`filmcraft`, `filmcraft-cli`, `ffmpeg`, `ffprobe`, `node`, `python3`).
-2. Membuat `.venv/` dan menginstall `services/video-intelligence` (`faster-whisper`, `scenedetect`, `pydantic`, `numpy`, `jsonschema` — **tanpa `torch`**, CPU-only).
-3. Membuat folder `workspace/{inbox,projects,models,logs,.filmcraft-data}` dan `raw-video/`.
-4. Meng-generate `.opencode/opencode.json` sesuai path direktori saat ini.
-5. Meng-generate `FILMCRAFT_CONTROL_TOKEN` (64-hex) ke `workspace/logs/bridge.json` (otomatis dibaca oleh mode Bridge GUI).
-6. Menjalankan `npm run verify` dan `npm test`.
+1. Mengecek binary sistem wajib (`filmcraft`, `filmcraft-cli`, `ffmpeg`, `ffprobe`, `node`, `python3`, `openssl`) serta mengecek `opencode` (opsional).
+2. Menjalankan `npm install` untuk dependensi Node.js.
+3. Membuat `.venv/`, menginstall `services/video-intelligence` (`faster-whisper`, `scenedetect`, `pydantic`, `numpy`, `jsonschema` — CPU-only, **tanpa `torch`**), dan memverifikasi **Silero VAD ONNX** (`faster_whisper.vad`) aktif.
+4. Membuat folder `workspace/{inbox,projects,models,logs,.filmcraft-data}` & `raw-video/`, meng-generate `.opencode/opencode.json` sesuai path direktori saat ini, menyalin skill `@filmcraft` ke `~/.config/opencode/skills/filmcraft`, serta meng-generate `FILMCRAFT_CONTROL_TOKEN` (64-hex) ke `workspace/logs/bridge.json`.
+5. *(Jika pakai `--with-model`)* Pre-download model `faster-whisper` `base` ke `workspace/models/`.
+6. Menjalankan `npm run verify`.
+7. Menjalankan `npm test` *(bisa dilewati dengan `--skip-tests`)*.
 
 *(Opsional)* Untuk membuktikan pipeline end-to-end dari sintesis video sampai export MP4:
 ```bash
