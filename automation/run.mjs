@@ -28,7 +28,12 @@ Downloader Options (handled by automation/libreget.mjs):
 
 Video Editor Options (forwarded to apps/cli/src/main.mjs):
   -i, --input <arg...>       YouTube/media URL(s) or local file/directory path(s)
-  --preset <name>            Editorial preset: tutorial-id (default), vlog-id
+  --preset <name>            Editorial preset: tutorial-id (default), vlog-id, shorts-id
+  --aspect <mode>            Target aspect ratio: portrait (1080x1920) or landscape (1920x1080)
+  --reframe <mode>           Reframe mode: blur (default when changing aspect), crop, or none
+  --font <name>              Styled subtitle font (e.g. "Noto Sans", "DejaVu Sans")
+  --font-size <px>           Styled subtitle font size (e.g. 58 for portrait, 44 for landscape)
+  --burn-styled-subs         Burn styled ASS subtitles onto exported MP4
   --job <id>                 Job identifier
   --model <name>             Whisper model: base (default), small
   --cut-kinds <list>         Comma-separated cut kinds (e.g. silence,dead_air)

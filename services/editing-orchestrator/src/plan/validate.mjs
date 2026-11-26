@@ -49,8 +49,15 @@ export function checkSchema(plan) {
   const seq = plan?.sequence;
   if (!seq) d.push({ layer: "schema", path: "sequence", msg: "required" });
   else {
-    if (seq.width !== 1920) d.push({ layer: "schema", path: "sequence.width", msg: "must be 1920" });
-    if (seq.height !== 1080) d.push({ layer: "schema", path: "sequence.height", msg: "must be 1080" });
+    const isLandscape = seq.width === 1920 && seq.height === 1080;
+    const isPortrait = seq.width === 1080 && seq.height === 1920;
+    if (!isLandscape && !isPortrait) {
+      d.push({
+        layer: "schema",
+        path: "sequence.width",
+        msg: "must be 1920x1080 (landscape) or 1080x1920 (portrait)",
+      });
+    }
     if (!(seq.fps > 0)) d.push({ layer: "schema", path: "sequence.fps", msg: "must be > 0" });
     if (seq.sampleRate !== 48000)
       d.push({ layer: "schema", path: "sequence.sampleRate", msg: "must be 48000" });

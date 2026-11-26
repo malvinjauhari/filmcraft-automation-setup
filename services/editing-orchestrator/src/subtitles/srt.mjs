@@ -5,8 +5,12 @@
  * of an editing plan so every cue lands at its exact edited-timeline time.
  */
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { normalizeCuts, keptRanges } from "../plan/compile.mjs";
-import { floorToFrame, formatSrtTime, secondsToTicks } from "../timeline/time.mjs";
+import { TICKS_PER_SECOND, floorToFrame, formatSrtTime, secondsToTicks } from "../timeline/time.mjs";
+
+const exec = promisify(execFile);
 
 const SENTENCE_END = /[.!?…]$/;
 
@@ -188,4 +192,87 @@ export function formatSrt(cues) {
       .join("\n")
       .trimEnd() + (cues.length > 0 ? "\n" : "")
   );
+}
+
+/** Convert `#RRGGBB` hex color to ASS `&H00BBGGRR` format. */
+function hexToAssColor(hex = "#FFFFFF") {
+  const clean = String(hex).replace(/^#/, "").padStart(6, "0").slice(0, 6);
+  const r = clean.slice(0, 2);
+  const g = clean.slice(2, 4);
+  const b = clean.slice(4, 6);
+  return `&H00${b}${g}${r}`.toUpperCase();
+}
+
+/** Format BigInt ticks into ASS timestamp `H:MM:SS.cc`. */
+function formatAssTime(ticks) {
+  const t = BigInt(ticks);
+  const totalCs = (t * 100n) / TICKS_PER_SECOND;
+  const cs = Number(totalCs % 100n);
+  const totalSec = Number(totalCs / 100n);
+  const s = totalSec % 60;
+  const m = Math.floor(totalSec / 60) % 60;
+  const h = Math.floor(totalSec / 3600);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${h}:${pad(m)}:${pad(s)}.${pad(cs)}`;
+}
+
+/**
+ * Format subtitle cues into a styled ASS (Advanced SubStation Alpha) document.
+ * Supports custom font, size, bold, primary/outline color, shadow, and PlayRes.
+ */
+export function formatAss(cues, style = {}, { width = 1920, height = 1080 } = {}) {
+  const font = style.font ?? "Noto Sans";
+  const size = style.size ?? (height > width ? 58 : 44);
+  const bold = style.bold === false ? 0 : -1;
+  const primaryColor = hexToAssColor(style.color ?? "#FFFFFF");
+  const outlineColor = hexToAssColor(style.outlineColor ?? "#000000");
+  const outline = style.outline ?? (height > width ? 4 : 2);
+  const shadow = style.shadow ?? 1;
+  const marginV = style.marginV ?? (height > width ? 220 : 60);
+
+  const header = `[Script Info]
+ScriptType: v4.00+
+PlayResX: ${width}
+PlayResY: ${height}
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,${font},${size},${primaryColor},&H000000FF,${outlineColor},&H64000000,${bold},0,0,0,100,100,0,0,1,${outline},${shadow},2,40,40,${marginV},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
+
+  const events = cues.map((c) => {
+    const start = formatAssTime(c.startTicks);
+    const end = formatAssTime(c.endTicks);
+    const text = String(c.text ?? "").replace(/\r?\n/g, "\\N");
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
+  });
+
+  return [header, ...events].join("\n") + "\n";
+}
+
+/** Burn an ASS subtitle file onto a video using FFmpeg libass. */
+export async function burnAssSubtitles(videoPath, assPath, outputPath) {
+  const escapedAss = assPath.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
+  const args = [
+    "-y",
+    "-nostdin",
+    "-i",
+    videoPath,
+    "-vf",
+    `ass='${escapedAss}'`,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "18",
+    "-c:a",
+    "copy",
+    outputPath,
+  ];
+  await exec("ffmpeg", args, { timeout: 3_600_000, maxBuffer: 32 * 1024 * 1024 });
+  return outputPath;
 }

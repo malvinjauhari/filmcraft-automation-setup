@@ -1,0 +1,73 @@
+{
+  "name": "shorts-id",
+  "version": "1.0",
+  "description": "Indonesian 9:16 portrait (Reels / TikTok / YouTube Shorts): tight pacing, bold styled subtitles.",
+  "language": "id",
+
+  "silence": {
+    "minSilenceSeconds": 0.4,
+    "keepBreathSeconds": 0.14,
+    "protectTakeEdgesSeconds": 0.25,
+    "comment": "Fast-paced short-form cutting."
+  },
+
+  "fillers": {
+    "remove": true,
+    "lexiconId": [
+      "eee", "eh", "e", "emm", "em", "hmm", "hm", "mm",
+      "anu", "apa", "gitu", "gituh", "kayak", "kayaknya", "gimana"
+    ],
+    "lexiconEn": ["um", "uh", "erm", "er"],
+    "protect": ["ya", "kan", "nah", "jadi", "terus"]
+  },
+
+  "pacing": {
+    "maxRemovalRatioPerWindow": 0.35,
+    "windowSeconds": 30,
+    "minCutSeconds": 0.18
+  },
+
+  "subtitles": {
+    "enabled": true,
+    "language": "id",
+    "burnIn": true,
+    "sidecar": "srt",
+    "maxCharsPerLine": 24,
+    "maxLines": 2,
+    "minCueSeconds": 0.8,
+    "maxCueSeconds": 3.5,
+    "style": {
+      "font": "Noto Sans",
+      "size": 58,
+      "bold": true,
+      "color": "#FFE600",
+      "outline": 4,
+      "outlineColor": "#000000",
+      "shadow": 2,
+      "align": "center",
+      "anchor": "bottom",
+      "marginV": 220
+    }
+  },
+
+  "audio": {
+    "targetLufs": -14,
+    "truePeakDb": -1.5,
+    "normalisePerClip": true
+  },
+
+  "chapters": {
+    "enabled": true,
+    "minChapterSeconds": 30,
+    "fromSceneCuts": true
+  },
+
+  "export": {
+    "format": "h264",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "sampleRate": 48000,
+    "presetQuery": { "format": "h264", "width": 1080, "height": 1920 }
+  }
+}

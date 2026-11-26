@@ -11,6 +11,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
+import { stdin as inputStream, stdout as outputStream } from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { FilmCraftClient } from "../../../services/editing-orchestrator/src/filmcraft/client.mjs";
@@ -18,7 +20,8 @@ import { TimelineBuilder } from "../../../services/editing-orchestrator/src/time
 import { compilePlan } from "../../../services/editing-orchestrator/src/plan/compile.mjs";
 import { proposePlan } from "../../../services/editing-orchestrator/src/plan/propose.mjs";
 import { validatePlan } from "../../../services/editing-orchestrator/src/plan/validate.mjs";
-import { formatSrt } from "../../../services/editing-orchestrator/src/subtitles/srt.mjs";
+import { burnAssSubtitles, formatAss, formatSrt } from "../../../services/editing-orchestrator/src/subtitles/srt.mjs";
+import { reframeVideo } from "../../../services/editing-orchestrator/src/video/reframe.mjs";
 import { computeClipGains } from "../../../services/editing-orchestrator/src/audio/loudness.mjs";
 import { qcExport, verifySourceIntegrity } from "../../../services/editing-orchestrator/src/qc/check.mjs";
 import { buildReport, writeReport } from "../../../services/editing-orchestrator/src/report/write.mjs";
@@ -41,6 +44,12 @@ function parseArgs(argv) {
     controlToken: process.env.FILMCRAFT_CONTROL_TOKEN ?? null,
     cutKinds: null,
     model: "base",
+    aspect: null,
+    reframe: null,
+    font: null,
+    fontSize: null,
+    burnStyledSubs: false,
+    nonInteractive: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -76,6 +85,18 @@ function parseArgs(argv) {
       opts.controlToken = argv[++i];
     } else if (a === "--cut-kinds") {
       opts.cutKinds = argv[++i].split(",").map((s) => s.trim()).filter(Boolean);
+    } else if (a === "--aspect") {
+      opts.aspect = argv[++i];
+    } else if (a === "--reframe") {
+      opts.reframe = argv[++i];
+    } else if (a === "--font") {
+      opts.font = argv[++i];
+    } else if (a === "--font-size") {
+      opts.fontSize = Number(argv[++i]);
+    } else if (a === "--burn-styled-subs") {
+      opts.burnStyledSubs = true;
+    } else if (a === "--non-interactive") {
+      opts.nonInteractive = true;
     } else if (a === "--help" || a === "-h") {
       opts.help = true;
     } else {
@@ -126,10 +147,32 @@ async function exists(path) {
   }
 }
 
-async function resolveExportPreset(client, presetConfig) {
-  const query = presetConfig?.presetQuery ?? { format: "h264", width: 1920, height: 1080 };
+async function resolveExportPreset(client, presetConfig, sequence) {
+  const width = sequence?.width ?? presetConfig?.width ?? 1920;
+  const height = sequence?.height ?? presetConfig?.height ?? 1080;
+  const query = presetConfig?.presetQuery ?? { format: "h264", width, height };
   const presets = await client.exportPresets();
   const list = Array.isArray(presets) ? presets : presets?.presets ?? [];
+
+  const exactSize = list.find(
+    (p) =>
+      typeof p.name === "string" &&
+      Array.isArray(p.frameSize) &&
+      p.frameSize[0] === width &&
+      p.frameSize[1] === height &&
+      (p.format === query.format || p.format === "h264")
+  );
+  if (exactSize) return exactSize.name;
+
+  if (width === 1080 && height === 1920) {
+    const vertical = list.find(
+      (p) =>
+        typeof p.name === "string" &&
+        (p.name.includes("1080×1920") || p.name.includes("1080x1920") || /vertical|tiktok/i.test(p.name))
+    );
+    if (vertical) return vertical.name;
+  }
+
   const exact = list.find(
     (p) =>
       typeof p.name === "string" &&
@@ -139,7 +182,7 @@ async function resolveExportPreset(client, presetConfig) {
   if (exact) return exact.name;
   const fallback = list.find((p) => typeof p.name === "string" && p.name.includes("1080p"));
   if (!fallback) {
-    throw new Error("No 1080p export preset found via export.presets.list");
+    throw new Error(`No ${width}x${height} export preset found via export.presets.list`);
   }
   return fallback.name;
 }
@@ -180,11 +223,70 @@ async function main() {
     preset.subtitles = { ...(preset.subtitles ?? {}), burnIn: opts.burnCaptions };
   }
 
+  if (inputStream.isTTY && !opts.nonInteractive && !opts.resume) {
+    const rl = createInterface({ input: inputStream, output: outputStream });
+    try {
+      if (opts.aspect === null && opts.reframe === null) {
+        const ans = (
+          await rl.question(
+            "\n[Opsional] Ubah rasio video?\n  [1] Tidak (ikuti preset)\n  [2] Portrait 9:16 (1080x1920)\n  [3] Landscape 16:9 (1920x1080)\nPilihan [1/2/3] (default 1): "
+          )
+        ).trim();
+        if (ans === "2" || ans === "3") {
+          opts.aspect = ans === "2" ? "portrait" : "landscape";
+          const modeAns = (
+            await rl.question("Mode reframe? [1] blur (video utuh) / [2] crop (default 1): ")
+          ).trim();
+          opts.reframe = modeAns === "2" ? "crop" : "blur";
+        }
+      }
+      if (!opts.burnStyledSubs && !opts.font) {
+        const subAns = (
+          await rl.question(
+            "[Opsional] Tambahkan subtitle dengan font menarik (.ass burn-in)? [y/N]: "
+          )
+        ).trim();
+        if (/^y(a|es)?$/i.test(subAns)) {
+          opts.burnStyledSubs = true;
+          const fontAns = (
+            await rl.question("Nama font (Enter untuk default 'Noto Sans'): ")
+          ).trim();
+          if (fontAns) opts.font = fontAns;
+        }
+      }
+    } finally {
+      rl.close();
+    }
+  }
+
+  const targetWidth =
+    opts.aspect === "portrait" ? 1080 : opts.aspect === "landscape" ? 1920 : (preset.export?.width ?? 1920);
+  const targetHeight =
+    opts.aspect === "portrait" ? 1920 : opts.aspect === "landscape" ? 1080 : (preset.export?.height ?? 1080);
+  const reframeMode =
+    opts.reframe ?? (opts.aspect || targetWidth !== 1920 || targetHeight !== 1080 ? "blur" : "none");
+
+  let workingFiles = files;
+  if (reframeMode !== "none") {
+    console.log(`[0/6] Reframing ${files.length} source(s) -> ${targetWidth}x${targetHeight} (${reframeMode})`);
+    const reframed = [];
+    for (let i = 0; i < files.length; i++) {
+      const outReframed = join(jobDir, `reframed-${i}.mp4`);
+      await reframeVideo(files[i], outReframed, {
+        width: targetWidth,
+        height: targetHeight,
+        mode: reframeMode,
+      });
+      reframed.push(outReframed);
+    }
+    workingFiles = reframed;
+  }
+
   // 1. Analyse (Python vidintel)
   const mediaPath = join(jobDir, "media.json");
   const analysisPath = join(jobDir, "analysis.json");
   if (!opts.resume || !state.completed.analyse || !(await exists(mediaPath))) {
-    console.log(`[1/6] Analysing ${files.length} source(s) -> ${jobDir}`);
+    console.log(`[1/6] Analysing ${workingFiles.length} source(s) -> ${jobDir}`);
     const py = join(ROOT, ".venv", "bin", "python");
     await exec(
       py,
@@ -192,7 +294,7 @@ async function main() {
         "-m",
         "vidintel",
         "pipeline",
-        ...files,
+        ...workingFiles,
         "--out-dir",
         jobDir,
         "--job",
@@ -237,6 +339,7 @@ async function main() {
       analysis,
       preset,
       cutKinds: opts.cutKinds,
+      aspect: opts.aspect,
     });
     if (preset.audio?.normalisePerClip) {
       const gains = await computeClipGains(media.sources, preset.audio?.targetLufs ?? -14);
@@ -259,7 +362,21 @@ async function main() {
 
   // 4. Subtitles & compile
   const srtPath = join(jobDir, "subtitles.srt");
+  const assPath = join(jobDir, "subtitles.ass");
+  const subStyle = {
+    ...(preset.subtitles?.style ?? {}),
+    ...(opts.font ? { font: opts.font } : {}),
+    ...(opts.fontSize ? { size: opts.fontSize } : {}),
+  };
   await writeFile(srtPath, formatSrt(plan.subtitles ?? []), "utf8");
+  await writeFile(
+    assPath,
+    formatAss(plan.subtitles ?? [], subStyle, {
+      width: plan.sequence.width,
+      height: plan.sequence.height,
+    }),
+    "utf8"
+  );
   const includeTimelineCaptions =
     opts.timelineCaptions ?? (plan.audio?.burnCaptions ?? true);
   const compiled = compilePlan(plan, media, {
@@ -297,18 +414,26 @@ async function main() {
       });
       try {
         await client.start();
-        const presetName = await resolveExportPreset(client, preset.export);
+        const presetName = await resolveExportPreset(client, preset.export, plan.sequence);
         const builder = new TimelineBuilder(client, {
           log: (k, v) => console.log(`  ${k}${v !== undefined ? `: ${v}` : ""}`),
         });
-        return await builder.build(compiled, {
+        const useAssBurn = opts.burnStyledSubs || Boolean((opts.font || opts.fontSize) && (plan.audio?.burnCaptions ?? true));
+        const res = await builder.build(compiled, {
           fps: plan.sequence.fps,
           exportPath,
           projectPath,
           preset: presetName,
-          burnCaptions: plan.audio?.burnCaptions ?? false,
+          burnCaptions: useAssBurn ? false : (plan.audio?.burnCaptions ?? false),
           captionSidecar: includeTimelineCaptions,
         });
+        if (useAssBurn && (plan.subtitles?.length ?? 0) > 0) {
+          const styledTmp = join(jobDir, "output-styled.mp4");
+          await burnAssSubtitles(exportPath, assPath, styledTmp);
+          const { rename } = await import("node:fs/promises");
+          await rename(styledTmp, exportPath);
+        }
+        return res;
       } finally {
         await client.close();
       }

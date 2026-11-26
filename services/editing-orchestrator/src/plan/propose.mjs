@@ -21,14 +21,19 @@ export function proposePlan({
   analysis = { sources: [] },
   preset = {},
   cutKinds = null,
+  aspect = null,
   generatedBy = "proposePlan/1.0",
 }) {
   const allowedCutKinds = cutKinds ? new Set(cutKinds) : ALLOWED_KINDS;
   const firstVideo = media.sources.find((s) => s.video?.fps > 0);
   const fps = preset.export?.fps ?? firstVideo?.video?.fps ?? 30;
+  const width =
+    aspect === "portrait" ? 1080 : aspect === "landscape" ? 1920 : (preset.export?.width ?? 1920);
+  const height =
+    aspect === "portrait" ? 1920 : aspect === "landscape" ? 1080 : (preset.export?.height ?? 1080);
   const sequence = {
-    width: 1920,
-    height: 1080,
+    width,
+    height,
     fps,
     sampleRate: 48000,
   };

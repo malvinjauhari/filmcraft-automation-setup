@@ -32,8 +32,8 @@
       "required": ["width", "height", "fps", "sampleRate"],
       "additionalProperties": false,
       "properties": {
-        "width": { "type": "integer", "const": 1920 },
-        "height": { "type": "integer", "const": 1080 },
+        "width": { "type": "integer", "enum": [1920, 1080] },
+        "height": { "type": "integer", "enum": [1080, 1920] },
         "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 120 },
         "sampleRate": { "type": "integer", "const": 48000 }
       }
