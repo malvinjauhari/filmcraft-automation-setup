@@ -4,27 +4,29 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT_DIR}"
 
+MODE=""
 WITH_MODEL=false
 RUN_SMOKE=false
 SKIP_TESTS=false
 
 for arg in "$@"; do
   case "$arg" in
-    --with-model) WITH_MODEL=true ;;
-    --smoke) RUN_SMOKE=true ;;
-    --skip-tests) SKIP_TESTS=true ;;
+    --editor-only) MODE="editor-only" ;;
+    --full)        MODE="full" ;;
+    --with-model)  WITH_MODEL=true ;;
+    --smoke)       RUN_SMOKE=true ;;
+    --skip-tests)  SKIP_TESTS=true ;;
     -h|--help)
       cat <<'EOF'
 Usage: ./setup.sh [options]
 
-Bootstrap ai-video-editor in this folder:
-  1. Verify required system binaries (filmcraft, filmcraft-cli, ffmpeg, ffprobe, node, python3, openssl) and check optional opencode CLI
-  2. Run npm install for Node.js dependencies
-  3. Create Python .venv, install services/video-intelligence, and verify Silero VAD ONNX (faster_whisper.vad, no torch)
-  4. Create workspace/ dirs, generate .opencode/opencode.json, install @filmcraft skill to ~/.config/opencode/skills/filmcraft, and initialize FILMCRAFT_CONTROL_TOKEN
-  5. Run npm run verify and npm test
+Bootstrap ai-video-editor + optional downloader automation:
+  Pilihan 1 (--editor-only) : Video Editor only (Python .venv + Silero VAD ONNX, npm install, @filmcraft skill, FILMCRAFT_CONTROL_TOKEN)
+  Pilihan 2 (--full)        : Video Editor + Downloader Automation (runs automation/setup-downloader.sh for libreget-cli + yt-dlp)
 
 Options:
+  --editor-only  Non-interactive: install Video Editor only
+  --full         Non-interactive: install Video Editor + libreget-cli downloader
   --with-model   Pre-download faster-whisper "base" model (~145 MB) into workspace/models/
   --smoke        Run end-to-end synthetic smoke test (npm run smoke) after setup
   --skip-tests   Skip npm test
@@ -38,6 +40,26 @@ EOF
       ;;
   esac
 done
+
+if [[ -z "${MODE}" ]]; then
+  echo "============================================================"
+  echo "  AI Video Setup — Pilih Mode Instalasi"
+  echo "============================================================"
+  echo "  [1] Install Sistem Video Editor Saja (local file -> auto-edit)"
+  echo "  [2] Install Sistem Video Editor + Downloader Automation (URL -> download -> auto-edit)"
+  echo ""
+  read -r -p "Pilih mode instalasi [1/2] (default: 2): " CHOICE
+  case "${CHOICE:-2}" in
+    1) MODE="editor-only" ;;
+    2) MODE="full" ;;
+    *)
+      echo "Pilihan tidak valid: ${CHOICE}" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+echo "==> Mode terpilih: ${MODE}"
 
 echo "==> [1/7] Checking system binaries..."
 MISSING=0
@@ -132,6 +154,18 @@ else
   printf '{"host":"127.0.0.1","port":%s,"token":"%s"}\n' "${BRIDGE_PORT}" "${FILMCRAFT_CONTROL_TOKEN}" > "${BRIDGE_FILE}"
   chmod 600 "${BRIDGE_FILE}"
   echo "  ✓ Generated FILMCRAFT_CONTROL_TOKEN -> workspace/logs/bridge.json"
+fi
+
+cat > "${ROOT_DIR}/.env" <<EOF
+FILMCRAFT_CONTROL_PORT=${BRIDGE_PORT}
+FILMCRAFT_CONTROL_TOKEN=${FILMCRAFT_CONTROL_TOKEN}
+EOF
+chmod 600 "${ROOT_DIR}/.env"
+echo "  ✓ Saved FILMCRAFT_CONTROL_TOKEN -> .env"
+
+if [[ "${MODE}" == "full" ]]; then
+  echo "==> [4b] Installing Downloader Automation (automation/setup-downloader.sh)..."
+  bash "${ROOT_DIR}/automation/setup-downloader.sh"
 fi
 
 if [[ "$WITH_MODEL" == true ]]; then

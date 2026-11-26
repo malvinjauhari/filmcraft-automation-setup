@@ -1,5 +1,7 @@
-# Python virtual environment & build artifacts
+# Python virtual environment, env & downloader binary
+.env
 .venv/
+bin/libreget
 __pycache__/
 *.py[cod]
 *.egg-info/
